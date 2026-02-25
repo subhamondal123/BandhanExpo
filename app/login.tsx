@@ -189,7 +189,7 @@ const Login = () => {
                                         </Pressable>
                                         :
                                         <FontAwesome6 name='key' size={20} color={Colors.COLOR.RED.PURE_RED} />
-                                    }
+                                    } 
                                 </View>
                                 <View className='flex-row items-center mb-6 flex-[0.6] '>
                                     {alertMessage.length > 0 ? <>
