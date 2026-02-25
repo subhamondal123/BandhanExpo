@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* This attempts to set the default for the app environment */
+  html, body, input, textarea, button {
+    font-family: Poppins_400Regular;
+  }
+}
