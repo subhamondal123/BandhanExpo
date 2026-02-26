@@ -16,14 +16,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    gap: 12,
+    gap: 6,
     // Shadow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
-    zIndex:50
+    zIndex: 50
     // padding: 15,
     // borderRadius: 10,
     // elevation: 5,
@@ -64,7 +64,7 @@ export const toastConfig = {
   info: ({ text1 }: ToastConfigParams<any>) => (
     <View style={[styles.base, { backgroundColor: '#fffbeb', borderColor: "#fde68a" }]}>
       <AntDesign name="info-circle" size={18} color="#f59e0b" />
-      <Text style={{ color: '#374151', fontWeight: '400', top: -3, fontSize: 14, }}>
+      <Text style={{ color: '#374151', fontWeight: '400', fontSize: 14, }}>
         {text1}
       </Text>
     </View>

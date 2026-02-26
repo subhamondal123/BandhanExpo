@@ -1,16 +1,23 @@
+import { ModuleType } from '@/src/constants/commonData';
+import ErrorCode from '@/src/constants/errorCode';
 import { Colors, ImageName } from '@/src/enums';
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/src/enums/global-constants';
+import { StorageDataModification } from '@/src/services/common-view-function';
 import { APP_INFO } from '@/src/services/config/app_info';
+import { DeviceInfo } from '@/src/services/config/index';
+import { MiddlewareCheck } from '@/src/services/middleware';
 import BottomModal from '@/src/shared/BottomModal';
 import AppDropdown from '@/src/shared/Dropdown';
 import { showToast } from '@/src/shared/Toaster';
 import TypeWriterText from '@/src/shared/TypeWriterText';
+import { useAppDispatch } from "@/src/store/hooks";
+import { setUserCredential } from '@/src/store/slices/authSlice';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useRef, useState } from 'react';
-import { Image, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { modLoginData } from './function';
 
 const modalArrData = [
     { id: 1, label: 'Item 1', name: '1' },
@@ -31,15 +38,28 @@ const modalArrData = [
     { id: 16, label: 'Item 8', name: '16' },
 ]
 
+
 const Login = () => {
+
+    const dispatch = useAppDispatch();
+
     const [userId, setUserId] = useState('');
     const [password, setPassword] = useState('');
     const [alertMessage, setAlertMessage] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [openModal, setOpenModal] = useState(false);
+    const [clientArr, setClientArr] = useState([]);
     const [selectedClient, setSelectedClient] = useState(null);
+    const [loginButtonLoader, setLoginButtonLoader] = useState(false);
 
     const passwordRef = useRef<TextInput>(null)
+
+    const onChangeUserId = (val: any) => {
+        setUserId(val)
+    }
+    const onChangePassword = (val: any) => {
+        setPassword(val)
+    }
 
     const onPolicy = (type: string) => {
         // this.props.navigation.navigate("PolicyView", { "type": type });
@@ -95,26 +115,88 @@ const Login = () => {
         )
     }
 
-    const onLogin = () => {
+    const onLogin = async () => {
         // showToast("Hello hhjsahjashfb sad sah bdhsabd  dsa dsfdsfdsfsdf",'info')
         // router.push("/modal")
-        setOpenModal(true)
+        // setOpenModal(true)
+        let userIdData = userId.replace(/\s+/g, '');
+        let errorCount = 0;
+        let msg = "";
+        if (userIdData == null || userIdData == undefined || userIdData.length == 0) {
+            msg = "Please enter User Id";
+            errorCount++;
+        } else if (password == null || password == undefined || password.length == 0) {
+            msg = "Please enter Password ";
+            errorCount++;
+        }
+
+        setAlertMessage(msg)
+        if (errorCount == 0) {
+            setLoginButtonLoader(true)
+            let reqData = {
+                "username": userId,
+                "password": password,
+                "platform": Platform.OS,
+                "deviceId": await DeviceInfo.getDeviceId(),
+                // "fcmToken":fcmToken,
+                "businessType": "",
+                "type": "0",
+                "moduleId": ModuleType.BANDHAN_APP
+            }
+            console.log("reqData---", reqData)
+
+            try {
+                let responseData = await MiddlewareCheck("mobileLogin", reqData)
+                console.log("responsedata---", JSON.stringify(responseData))
+                if (responseData) {
+                    if (responseData.status === ErrorCode.ERROR_CODE.SUCCESS) {
+                        showToast(responseData.message, 'success')
+                        if (responseData.response.length > 1) {
+                            let modLoginArr = modLoginData(responseData.response)
+                            // this.setState({ loginArr: modLoginArr })
+                            // setClientArr(modLoginArr)
+                            // this.openSelectionModal();
+                            setOpenModal(true)
+                        } else {
+                            if (responseData.response[0].approvedStatus == 0) {
+                                showToast("Account not Approved!", 'info')
+                                setAlertMessage("Account not Approved!")
+                            } else if (responseData.response[0].loginAccess == 0) {
+                                showToast("Restricted Access!", 'error')
+                                setAlertMessage("Restricted Access!")
+                            } else {
+                                await StorageDataModification.authTokenData(responseData.response[0].token, "store");
+                                await StorageDataModification.userCredential(responseData.response[0], "store");
+                                dispatch(setUserCredential(responseData.response[0]));
+                            }
+                        }
+                    } else {
+                        setAlertMessage(responseData.message)
+                    }
+                }
+            } catch (error) {
+                console.log("--error--", error)
+            } finally {
+                setLoginButtonLoader(false)
+            }
+
+        }
     }
 
     return (
         <SafeAreaView style={{ flex: 1 }}>
             <StatusBar barStyle={"default"} backgroundColor={"#c30a36"} />
-            <LinearGradient
-                colors={['#c30a36', '#7f6ca6', '#fadbe3']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 className="flex-1"
             >
-                <View className="flex-1">
-                    <KeyboardAvoidingView
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        className="flex-1"
-                    >
+                <LinearGradient
+                    colors={['#c30a36', '#7f6ca6', '#fadbe3']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    className="flex-1"
+                >
+                    <View className="flex-1">
                         <ScrollView contentContainerStyle={{ flexGrow: 1 }}
                             keyboardShouldPersistTaps="handled"
                             showsVerticalScrollIndicator={false}>
@@ -163,7 +245,7 @@ const Login = () => {
                                         value={userId}
                                         returnKeyType='next'
                                         onSubmitEditing={() => passwordRef.current?.focus()}
-                                        onChangeText={setUserId}
+                                        onChangeText={(e) => onChangeUserId(e)}
                                         placeholder="Enter your User ID"
                                         className="flex-1 font-poppins"
                                     />
@@ -178,7 +260,7 @@ const Login = () => {
                                     <TextInput
                                         value={password}
                                         ref={passwordRef}
-                                        onChangeText={setPassword}
+                                        onChangeText={(e) => onChangePassword(e)}
                                         placeholder="Enter your Password"
                                         secureTextEntry={showPassword}
                                         className="flex-1 font-poppins"
@@ -189,7 +271,7 @@ const Login = () => {
                                         </Pressable>
                                         :
                                         <FontAwesome6 name='key' size={20} color={Colors.COLOR.RED.PURE_RED} />
-                                    } 
+                                    }
                                 </View>
                                 <View className='flex-row items-center mb-6 flex-[0.6] '>
                                     {alertMessage.length > 0 ? <>
@@ -199,12 +281,14 @@ const Login = () => {
                                         </View>
                                     </> : null}
                                 </View>
-                                <TouchableOpacity
+                                <Pressable android_ripple={{ color: "#ccc" }}
                                     className="bg-secondary-500 p-4 rounded-2xl shadow-lg active:bg-secondary"
-                                    onPress={() => onLogin()}
+                                    onPress={() => onLogin()} disabled={loginButtonLoader}
                                 >
-                                    <Text className="text-white text-center font-bold text-xl tracking-wider">Login</Text>
-                                </TouchableOpacity>
+                                    {loginButtonLoader ? <ActivityIndicator size={'small'} color={"#fff"} className='p-1.4' /> :
+                                        <Text className="text-white text-center font-bold text-xl tracking-wider">Login</Text>
+                                    }
+                                </Pressable>
                                 <TouchableOpacity className="mt-8">
                                     <Text className="text-gray-400 text-xs text-center tracking-wider">
                                         By logging in, you agree to our
@@ -223,9 +307,9 @@ const Login = () => {
                                 </View>
                             </View>
                         </ScrollView>
-                    </KeyboardAvoidingView>
-                </View>
-            </LinearGradient>
+                    </View>
+                </LinearGradient>
+            </KeyboardAvoidingView>
             {modalSec()}
         </SafeAreaView>
     )
